@@ -27,9 +27,11 @@ from mininet.log import setLogLevel, info
 
 user_list = []
 
-cmd_list = ['USER', 'PASS', 'PWD', 'CD', 'GET', 'QUIT']
+cmd_list = ['USER', 'PASS', 'PWD', '!PWD','CD','!CD', 'PWD', '!PWD','GET','PUT', 'QUIT']
 
 user_list = [ ('Nabil','1234'), ('Brooke','qwer'), ('Martin','iluvnet'),('Yasir','ethernet')]
+server_files = ['bigfile', 'small_file1']
+dir_list = ['h', 'level1']
 
 class SingleSwitchTopo(Topo):
     "Single switch connected to n hosts."
@@ -115,7 +117,6 @@ def monitorTest( N=4, seconds=20 ):
         print fout
         ferr =open(errfiles[ h ], 'w')
         print h.cmd("pwd")
-        print h.cmd("cd h1")
         print h.cmd("pwd")
         args = ['../obj/FTPclient', server.IP(), '5000']
         #args = ['pwd']
@@ -123,7 +124,7 @@ def monitorTest( N=4, seconds=20 ):
         kargs['stdout'] = fout
         kargs['stderr'] = ferr
         kargs['stdin'] = PIPE
-        h.cmd('tail -f %s | stdbuf -o 0   ../../obj/FTPclient %s %s > %s &'%(infiles[h], server.IP(), '5000', outfiles[ h ] ))
+        h.cmd('tail -f %s | stdbuf -o 0   ../obj/FTPclient %s %s > %s &'%(infiles[h], server.IP(), '5000', outfiles[ h ] ))
         #h.cmd('tail -f %s  > %s &'%(infiles[h], outfiles[ h ] ))
         
         #cmds[h] = h.popen(*args, **kargs)
@@ -174,11 +175,42 @@ def monitorTest( N=4, seconds=20 ):
                 sleep(1);
                 #cmds[h].stdin.write('PASS 1234\n')
                 #cmds[h].stdin.flush()
+            if sub_cmd == '!CD':
+                print h.name, '!CD'
+                print h.cmd('echo  "!""CD %s" >> %s' %(h.name, infiles[h]))
+                sleep(1);
+            if sub_cmd == 'CD':
+                print h.name, 'CD'
+                h.cmd('echo  CD %s >> %s' %(server.name, infiles[h]))
+                sleep(1);
+            if sub_cmd == '!PWD':
+                print h.name, '!PWD'
+                h.cmd('echo  "!""PWD >> %s"' %(infiles[h]))
+                sleep(1);
             if sub_cmd == 'PWD':
                 print h.name, 'PWD'
                 h.cmd('echo  PWD >> %s' %(infiles[h]))
                 sleep(1);
                 #cmds[h].stdin.write('PWD\n')
+                #cmds[h].stdin.flush()
+            if sub_cmd == 'GET':
+                print h.name, 'GET'
+                if len(server_files) == 2:
+                    bigfile = server_files.pop(0);
+                    h.cmd('echo  GET %s >> %s' %(bigfile, infiles[h]))
+                else:
+                    smallfile = server_files[0];
+                    h.cmd('echo  GET %s >> %s' %(smallfile, infiles[h]))
+                sleep(1);
+            if sub_cmd == 'PUT':
+                print h.name, 'PUT'
+                #cmds[h].stdin.write('USER Nabil\n')
+                #cmds[h].stdin.flush()
+            if sub_cmd == 'QUIT':
+                print h.name, 'QUIT'
+                h.cmd('echo QUIT >> %s' %(infiles[h]))
+                sleep(1);
+                #cmds[h].stdin.write('QUIT\n')
                 #cmds[h].stdin.flush()
             if sub_cmd == 'GET':
                 print h.name, 'GET'
@@ -217,7 +249,13 @@ def monitorTest( N=4, seconds=20 ):
         cmds[h].stdin.write('QUIT\n')
         cmds[h].stdin.flush()
     '''
-    sleep(1);
+    output = server.cmd(' ls h2/in h3/in h4/in')
+
+    print output
+
+    while 'No such file' in output:
+        print 'Sleep......'
+        sleep(1);
     for h in hosts:
         h.cmd('pkill FTPserver')
         h.cmd('pkill FTPclient')
